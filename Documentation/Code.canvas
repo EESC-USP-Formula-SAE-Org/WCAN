@@ -1,0 +1,27 @@
+{
+	"nodes":[
+		{"id":"8e3022ac77b31a22","x":-644,"y":-404,"width":1484,"height":1284,"type":"group","label":"Central"},
+		{"id":"e5eb2fc153f4ce02","x":980,"y":-404,"width":1480,"height":1067,"type":"group","label":"Aquisitor"},
+		{"id":"781b32c1be6f4f61","type":"text","text":"# acquisitor_t\na `struct`  `aquisitor_t` é responsável por armazenar informação de um sensor de aquisição de dado\n### data\n- mac_address (`uint8_t[6]`)\n- data_type (`data_type_t`)\n- data_count (`size_t`)\n- online (`boolean`\n- data (`data_t*`)","x":-624,"y":-384,"width":644,"height":364},
+		{"id":"318768def7faced8","type":"text","text":"# Setup()\ncadastra `GetCommunicationCallback` como callback do `ESPNOW`\nchama `GetCommunication` para todos os `acquisitors` que não estão online.\nnão tenta conectar novamente.\nquando todos finalizam muda o callback do `ESPNOW` para `ReceiveData`\n","x":-624,"y":20,"width":644,"height":180},
+		{"id":"3e234f6e67990659","type":"text","text":"# global data\n\n- acquisitors (`acquisitors_t*`)\n- frame_time (`uint`)","x":60,"y":-384,"width":760,"height":144},
+		{"id":"2da0327e396ddf3d","type":"text","text":"# ReceiveDataCallback()\ncallback com dados, identifica qual sensor é, desempacota os dados na lista correta junto com os timeframes e manda via can\npisca LED","x":-624,"y":220,"width":644,"height":180},
+		{"id":"7811f70f3c4a48c1","type":"text","text":"# CANSend(acquisitor_t\\*, data\\*)\n\nRecebe uma lista de dados (data point + timestamp) e joga tudo na rede CAN","x":-624,"y":420,"width":644,"height":130},
+		{"id":"a63c23b957ee3548","type":"text","text":"# MemorySave(acquisitor_t\\*, data\\*)\n\nVerifica se a memória está cheia, se sim acende um LED, avisando.\nSalva os dados na memória permanente da ESP","x":-624,"y":580,"width":644,"height":180},
+		{"id":"43970542a175c44d","type":"text","text":"# data_t\na `struct`  `data_t` é basicamente um ponto de dado de tipo arbitrário \n- data (`TEMPLATE`)\n- timestamp (`uint`)","x":60,"y":-212,"width":760,"height":192},
+		{"id":"148ad12c8386099f","type":"text","text":"# GetCommunication(acquisitor_t*)\ninicia um [[handshake]] com um [[sensor de aquisição]] passando para ele o tempo atual e o [[tempo de frame]] em milisegundos, inicia um delay de timeout esperando a resposta do sensor visando receber o tipo de dado do sensor e quantos dados serão enviados em cada mensagem de comunicação\ncaso o timeout termine e o sensor não está marcado como `online`, finaliza a procura","x":60,"y":20,"width":760,"height":220},
+		{"id":"b47fe1ae1c8cd2a7","type":"text","text":"# GetCommunicationCallback()\ncallback de comunicação, espera umaa resposta de qualquer sensor de aquisição\nquando uma resposta chega, marca o `acqquisitor_t->online` como `true` e os outros dados com o recebido no pacote","x":60,"y":265,"width":760,"height":220},
+		{"id":"42fd42d8676dd8e1","type":"text","text":"# MemoryDump()\n\nExibe tudo da memória via serial, ativado por algum botão?","x":60,"y":510,"width":760,"height":160},
+		{"id":"2238ac1c73d2ae22","type":"text","text":"# MemoryClear()\n\nLImpa tudo da memória, ativado por algum botão?","x":60,"y":690,"width":760,"height":160},
+		{"id":"7246b286446d7708","type":"text","text":"# global data\n\n- data_buffer (`data_t*`)\n- current_time (`uint`)\n- mac_address (`uint8_t[6]`)\n- data\\_rate\\_hz (`size_t`)\n- frame\\_time (`uint`)\n- data\\_type (`data_type_t`)","x":1000,"y":-384,"width":644,"height":278},
+		{"id":"b6f304e69446b2c3","type":"text","text":"# data_t\na `struct`  `data_t` é basicamente um ponto de dado de tipo arbitrário \n- data (`TEMPLATE`)\n- timestamp (`uint`)","x":1680,"y":-384,"width":760,"height":192},
+		{"id":"34b2d2232344c5db","type":"text","text":"# GetCommunicationCallback()\nrecebe o tempo de frame e o tempo atual da central, calcula o tamanho do buffer e quantos pacotes são necessários para enviar toda a informação. \ninicializa o RTC.\nremovecallback","x":1680,"y":-157,"width":760,"height":220},
+		{"id":"487025e2c14642a0","type":"text","text":"# Setup()\ncadastra `GetCommunicationCallback` como callback do `ESPNOW`\n\n","x":1000,"y":-87,"width":644,"height":180},
+		{"id":"100406544db83685","type":"text","text":"# ReadData()\nFunção para ler os dados do sensor, insere os dados no buffer, quando ele tiver cheio chama `SendData` e `MemorySave`","x":1000,"y":123,"width":644,"height":180},
+		{"id":"23be5d57a0d85942","type":"text","text":"# MemorySave()\n\nVerifica se a memória está cheia, se sim acende um LED, avisando.\nSalva os dados do buffer na memória permanente da ESP","x":1000,"y":333,"width":644,"height":180},
+		{"id":"bf143243e45a2a41","type":"text","text":"# MemoryDump()\n\nExibe tudo da memória via serial, ativado por algum botão?","x":1680,"y":303,"width":760,"height":160},
+		{"id":"9fa260ef00fe4c29","type":"text","text":"# MemoryClear()\n\nLImpa tudo da memória, ativado por algum botão?","x":1680,"y":483,"width":760,"height":160},
+		{"id":"ab01e482f433a1e0","type":"text","text":"# SendData()\nEmpacota os dados do buffer e envia via `ESPNOW`\npisca LED\n","x":1680,"y":93,"width":760,"height":180}
+	],
+	"edges":[]
+}
