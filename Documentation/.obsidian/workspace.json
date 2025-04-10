@@ -11,17 +11,14 @@
             "id": "b699f152d63ca329",
             "type": "leaf",
             "state": {
-              "type": "canvas",
+              "type": "markdown",
               "state": {
-                "file": "Code.canvas",
-                "viewState": {
-                  "x": 588.9328296930978,
-                  "y": 264.20104072974493,
-                  "zoom": -0.7512339367203542
-                }
+                "file": "Wireless Controller Area Network.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-layout-dashboard",
-              "title": "Code"
+              "icon": "lucide-file",
+              "title": "Wireless Controller Area Network"
             }
           }
         ]
@@ -173,8 +170,8 @@
   },
   "active": "b699f152d63ca329",
   "lastOpenFiles": [
-    "Wireless Car Area Network.md",
-    "Pasted image 20250329115336.png",
-    "Code.canvas"
+    "Code.canvas",
+    "Wireless Controller Area Network.md",
+    "Pasted image 20250329115336.png"
   ]
 }

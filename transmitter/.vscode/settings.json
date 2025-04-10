@@ -5,21 +5,23 @@
     "idf.customExtraVars": {
         "OPENOCD_SCRIPTS": "C:\\Espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
         "IDF_CCACHE_ENABLE": "1",
-        "ESP_ROM_ELF_DIR": "C:\\Espressif\\tools\\esp-rom-elfs\\20230320/"
+        "ESP_ROM_ELF_DIR": "C:\\Espressif\\tools\\esp-rom-elfs\\20230320/",
+        "IDF_TARGET": "esp32c3"
     },
-    "idf.espIdfPathWin": "D:\\esp\\v5.4\\esp-idf",
+    "idf.espIdfPathWin": "C:\\Espressif\\frameworks\\esp-idf-v5.4.1", 
     "idf.openOcdConfigs": [
         "board/esp32c3-builtin.cfg"
     ],
     "idf.pythonBinPathWin": "C:\\Espressif\\python_env\\idf5.1_py3.11_env\\Scripts\\python.exe",
-    "idf.toolsPathWin": "D:\\Espressif",
+    "idf.toolsPathWin": "C:\\Espressif",
     "idf.gitPathWin": "C:\\Espressif\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
-    "idf.portWin": "COM7",
+    "idf.portWin": "COM10",
     "files.associations": {
         "task.h": "c",
         "freertos.h": "c",
         "esp_wifi.h": "c",
         "sdkconfig.h": "c",
         "esp_err.h": "c"
-    }
+    },
+    "idf.flashType": "JTAG"
 }
