@@ -2,7 +2,6 @@
 #define __WCAN_COMMUNICATION_H__
 
 #include <stdio.h>
-#include <nvs_flash.h>
 #include <stdbool.h>
 
 #include "string.h"
@@ -12,10 +11,6 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-#include "time_t.h"
-
-//static const char *TAG = "MAIN";
 
 #if CONFIG_ESPNOW_WIFI_MODE_STATION
 #define ESPNOW_WIFI_MODE WIFI_MODE_STA
@@ -28,19 +23,26 @@
 #define ESPNOW_CHANNEL 1
 #define ESPNOW_MAXDELAY 500
 
-static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 typedef struct {
     uint16_t can_id;
     uint8_t *payload;
     int payload_len;
 } event_send_cb_t;
+extern QueueHandle_t send_queue;
+static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 typedef struct {
     uint8_t mac_addr[ESP_NOW_ETH_ALEN];
     uint8_t *data;
     int data_len;
 } event_recv_cb_t;
+extern QueueHandle_t recv_queue;
+static bool recv_filter = true;
+static uint16_t recv_allowed_ids[3] = {0x123, 0x456, 0x789};
+#define ALLOWED_IDS_SIZE (sizeof(recv_allowed_ids) / sizeof(recv_allowed_ids[0]))
+
+void Setup();
+void RecvProcessing(uint16_t can_id, uint8_t* payload, int payload_len) __attribute__((weak));
 
 #endif
-

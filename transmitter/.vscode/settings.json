@@ -21,7 +21,9 @@
         "freertos.h": "c",
         "esp_wifi.h": "c",
         "sdkconfig.h": "c",
-        "esp_err.h": "c"
+        "esp_err.h": "c",
+        "wcan_communication.h": "c",
+        "cstdint": "cpp"
     },
     "idf.flashType": "JTAG"
 }
