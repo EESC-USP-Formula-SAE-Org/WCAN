@@ -32,7 +32,6 @@ static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
 typedef struct {
     uint16_t can_id;
-    time_t time;
     uint8_t *payload;
     int payload_len;
 } event_send_cb_t;

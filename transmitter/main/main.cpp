@@ -15,7 +15,7 @@
 static QueueHandle_t send_queue = NULL;
 
 static QueueHandle_t recv_queue = NULL;
-static bool recv_filter = false;
+static bool recv_filter = true;
 static uint16_t recv_allowed_ids[3] = {0x123, 0x456, 0x789};
 #define ALLOWED_IDS_SIZE (sizeof(recv_allowed_ids) / sizeof(recv_allowed_ids[0]))
 
@@ -45,28 +45,24 @@ static void SendProcessingTask(void *pvParameter)
         uint8_t *payload = send_cb.payload;
         int payload_len = send_cb.payload_len;
         uint16_t can_id = send_cb.can_id;
-        time_t time = send_cb.time;
-
-
-        uint8_t *data = (uint8_t *)malloc(10 + payload_len);
+        uint8_t *data = (uint8_t *)malloc(2 + payload_len);
         if (data == NULL) {
             ESP_LOGE(TAG, "Malloc send data fail");
             return;
         }
         memcpy(data, &can_id, sizeof(can_id));
-        memcpy(data + 2, &time, sizeof(time_t));
-        memcpy(data + 10, payload, payload_len);
+        memcpy(data + 2, payload, payload_len);
         ESP_LOGI(TAG, "CAN_ID: %04x", can_id);
-        ESP_LOGI(TAG, "Time: %llx", time);
         printf("Sending data: ");
-        for (int i = 0; i < 10 + payload_len; i++) {
+        for (int i = 0; i < 2 + payload_len; i++) {
             printf("%02x ", data[i]);
         }
         printf("\n");
         free(send_cb.payload);
         send_cb.payload = NULL;
 
-        esp_err_t ret = esp_now_send(broadcast_mac, data, sizeof(data));
+        esp_err_t ret = esp_now_send(broadcast_mac, data, payload_len + 2);
+        free(data);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Send data failed: %s", esp_err_to_name(ret));
         }
@@ -91,26 +87,33 @@ static void ReceiveCallback(const esp_now_recv_info_t *recv_info, const uint8_t 
     }
     memcpy(recv_cb->data, data, data_len);
     recv_cb->data_len = data_len;
-    ESP_LOGI(TAG, "Received: '%s' from %02x:%02x:%02x:%02x:%02x:%02x, len: %d", 
-            recv_cb->data, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], data_len);
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x send payload of size: %d", 
+            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], data_len);
+    printf("Received data: ");
+    for (int i = 0; i < recv_cb->data_len; i++) {
+        printf("%02x ", recv_cb->data[i]);
+    }
+    printf("\n");
 
-    uint16_t id = (recv_cb->data[0] << 8) | recv_cb->data[1];
+    uint16_t can_id;
+    memcpy(&can_id, recv_cb->data, sizeof(uint16_t));
+    ESP_LOGI(TAG, "Received data with id: %04x", can_id);
     if (recv_filter) {
         bool found = false;
         for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
-            if (id == recv_allowed_ids[i]) {
+            if (can_id == recv_allowed_ids[i]) {
                 found = true;
                 break;
             }
         }
         if (!found) {
-            ESP_LOGI(TAG, "Filtered data with id: %04x", id);
+            ESP_LOGI(TAG, "Filtered data with id: %04x", can_id);
             free(recv_cb->data);
             return;
         }
     }
 
-    if (xQueueSend(recv_queue, &recv_cb, ESPNOW_MAXDELAY) != pdTRUE) {
+    if (xQueueSend(recv_queue, recv_cb, ESPNOW_MAXDELAY) != pdTRUE) {
         ESP_LOGW(TAG, "Send receive queue fail");
         free(recv_cb->data);
         free(recv_cb);
@@ -129,10 +132,22 @@ static void RecvProcessingTask(void *pvParameter)
     event_recv_cb_t recv_cb;
 
     while (xQueueReceive(recv_queue, &recv_cb, portMAX_DELAY) == pdTRUE) {
-        uint16_t can_id = (recv_cb.data[0] << 8) | recv_cb.data[1];
-        time_t time = *(time_t *)(recv_cb.data + 2);
-        uint8_t *payload = recv_cb.data + 10;
-        ESP_LOGI(TAG, "Received data with id: %04x, time: %lld", can_id, time);
+        printf("Data to be interpreted: ");
+        for (int i = 0; i < recv_cb.data_len; i++) {
+            printf("%02x ", recv_cb.data[i]);
+        }
+        printf("\n");
+        
+        uint16_t can_id;
+        memcpy(&can_id, recv_cb.data, sizeof(uint16_t));
+        ESP_LOGI(TAG, "Received data with id: %04x", can_id);
+        uint8_t *payload = (uint8_t *)malloc(recv_cb.data_len - 2);
+        if (payload == NULL) {
+            ESP_LOGE(TAG, "Malloc payload fail");
+            free(recv_cb.data);
+            return;
+        }
+        memcpy(payload, recv_cb.data + 2, recv_cb.data_len - 2);
 
         switch (can_id)
         {
@@ -155,8 +170,8 @@ static void RecvProcessingTask(void *pvParameter)
             ESP_LOGI(TAG, "Received string data: %s", str_data);
             break;
         }
-        
         default:
+            ESP_LOGE(TAG, "Unknown data type");
             break;
         }
     }
@@ -192,10 +207,9 @@ static void ReadDataTask(void *pvParameter){
         for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
             event_send_cb_t send_cb;
             send_cb.can_id = recv_allowed_ids[i];
-            send_cb.time = get_rtc_seconds();
             send_cb.payload = NULL;
             send_cb.payload_len = 0;
-            ESP_LOGI(TAG, "Reading data for %04x at time: %lld", send_cb.can_id, send_cb.time);
+            ESP_LOGI(TAG, "Reading data for %04x", send_cb.can_id);
             switch (send_cb.can_id){
             case 0x123:{
                 float f_data = 3.14f;
@@ -229,7 +243,7 @@ static void ReadDataTask(void *pvParameter){
                     ESP_LOGE(TAG, "Malloc payload fail");
                     break;
                 }
-                send_cb.payload[0] = send_cb.payload_len;
+                send_cb.payload[0] = send_cb.payload_len-1;
                 memcpy(send_cb.payload + 1, str_data, send_cb.payload_len);
                 ESP_LOGI(TAG, "String data is: %s", str_data);
                 break;
@@ -282,5 +296,5 @@ extern "C" void app_main(void){
 
     xTaskCreate(SendProcessingTask, "SendProcessingTask", 4096, NULL, 4, NULL);
     xTaskCreate(RecvProcessingTask, "RecvProcessingTask", 4096, NULL, 3, NULL);
-    xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
+    //xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
 }
