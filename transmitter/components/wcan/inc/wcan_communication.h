@@ -43,6 +43,6 @@ static uint16_t recv_allowed_ids[3] = {0x123, 0x456, 0x789};
 #define ALLOWED_IDS_SIZE (sizeof(recv_allowed_ids) / sizeof(recv_allowed_ids[0]))
 
 void Setup();
-void RecvProcessing(uint16_t can_id, uint8_t* payload, int payload_len) __attribute__((weak));
+void RecvProcessingCallback(uint16_t can_id, uint8_t* payload, int payload_len) __attribute__((weak));
 
 #endif

@@ -79,18 +79,18 @@ static void RecvProcessingTask(void *pvParameter)
         }
         memcpy(payload, recv_cb.data + 2, len);
 
-        if(!RecvProcessing){
+        if(!RecvProcessingCallback){
             vTaskDelete(NULL);
             return;
         }
 
-        RecvProcessing(can_id, payload, len);
+        RecvProcessingCallback(can_id, payload, len);
         free(payload);
     }
     vTaskDelete(NULL);
 }
 
-static void SendCallback(const uint8_t *mac_addr, esp_now_send_status_t status)
+static void ESPNOW_SendCallback(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
     if (mac_addr == NULL) {
         ESP_LOGE(TAG, "Send cb arg error");
@@ -98,7 +98,7 @@ static void SendCallback(const uint8_t *mac_addr, esp_now_send_status_t status)
     }
 }
 
-static void ReceiveCallback(const esp_now_recv_info_t *recv_info, const uint8_t *data, int data_len)
+static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint8_t *data, int data_len)
 {
     event_recv_cb_t *recv_cb = (event_recv_cb_t *)malloc(sizeof(event_recv_cb_t));
 
@@ -166,9 +166,9 @@ void Setup(){
     ESP_ERROR_CHECK(esp_now_add_peer(peer));
     free(peer);
 
-    ESP_ERROR_CHECK(esp_now_register_send_cb(SendCallback));
+    ESP_ERROR_CHECK(esp_now_register_send_cb(ESPNOW_SendCallback));
     ESP_LOGI(TAG, "ESP-NOW send callback registered");
-    ESP_ERROR_CHECK(esp_now_register_recv_cb(ReceiveCallback));
+    ESP_ERROR_CHECK(esp_now_register_recv_cb(ESPNOW_RecvCallback));
     ESP_LOGI(TAG, "ESP-NOW receive callback registered");
 
     xTaskCreate(SendProcessingTask, "SendProcessingTask", 4096, NULL, 4, NULL);

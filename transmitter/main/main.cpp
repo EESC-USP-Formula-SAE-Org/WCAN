@@ -63,15 +63,16 @@ static void ReadDataTask(void *pvParameter){
             }
             default:
                 ESP_LOGE(TAG, "Unknown data type");
-                break;
+                continue;
             }
-            if (send_cb.payload != NULL) {
-                if (xQueueSend(send_queue, &send_cb, ESPNOW_MAXDELAY) != pdTRUE) {
-                    ESP_LOGW(TAG, "Send send queue fail");
-                    free(send_cb.payload);
-                } else {
-                    ESP_LOGI(TAG, "Data read successfully");
-                }
+
+            if (send_cb.payload == NULL) continue;
+
+            if (xQueueSend(send_queue, &send_cb, ESPNOW_MAXDELAY) == pdTRUE) {
+                ESP_LOGI(TAG, "Data read successfully");
+            } else {
+                ESP_LOGW(TAG, "Send send queue fail");
+                free(send_cb.payload);
             }
             vTaskDelay(pdMS_TO_TICKS(2000));
         }
@@ -79,18 +80,16 @@ static void ReadDataTask(void *pvParameter){
     vTaskDelete(NULL);
 }
 
-void RecvProcessing(uint16_t can_id, uint8_t* payload, int payload_len)
+void RecvProcessingCallback(uint16_t can_id, uint8_t* payload, int payload_len)
 {
     switch (can_id)
     {
     case 0x123:{
-        //0x123 is a float
         float data = *(float *)(payload);
         ESP_LOGI(TAG, "Received float data: %f", data);
         break;
     }
     case 0x456:{
-        //0x456 is an integer
         int32_t int_data = *(int32_t *)(payload);
         ESP_LOGI(TAG, "Received int data: %ld", int_data);
         break;
