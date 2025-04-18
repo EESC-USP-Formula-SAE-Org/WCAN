@@ -132,7 +132,7 @@ extern "C" void app_main(void){
 
     WiFiInit();
     ESP_LOGI(TAG, "WiFi initialized");
-    Setup();
+    WCAN_Init();
     ESP_LOGI(TAG, "Setup completed");
 
     //xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);

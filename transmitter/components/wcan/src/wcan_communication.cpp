@@ -149,7 +149,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     }
 }
 
-void Setup(){
+void WCAN_Init(){
     ESP_ERROR_CHECK(esp_now_init());
     ESP_LOGI(TAG, "ESP-NOW initialized");
     esp_now_peer_info_t *peer = (esp_now_peer_info_t *)malloc(sizeof(esp_now_peer_info_t));
