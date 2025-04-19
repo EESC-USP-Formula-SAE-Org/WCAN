@@ -26,8 +26,6 @@ static void SendData(send_packet_t send_cb){
     memcpy(data + 2, payload, payload_len);
     ESP_LOGI(TAG, "CAN_ID: %04x", can_id);
     PrintPacket(data, payload_len + 2);
-    //free(send_cb.payload);
-    send_cb.payload = NULL;
 
     esp_err_t ret = esp_now_send(broadcast_mac, data, payload_len + 2);
     free(data);
@@ -51,6 +49,12 @@ static void IRAM_ATTR ResendData(TimerHandle_t xTimer) {
 
         if (cur_send_packet->payload != NULL) {
             free(cur_send_packet->payload);
+            cur_send_packet->payload = NULL;
+        }
+
+        if (cur_send_packet != NULL) {
+            free(cur_send_packet);
+            cur_send_packet = NULL;
         }
         
         if(resend_timer != NULL) {
@@ -165,14 +169,21 @@ static void AckRecv(recv_packet_t *recv_cb)
         BaseType_t woken = pdFALSE;
         xSemaphoreGiveFromISR(send_mutex, &woken);
         portYIELD_FROM_ISR(woken);
-
-        if (cur_send_packet->payload != NULL) {
-            free(cur_send_packet->payload);
-        }
-        
-        xTimerStop(resend_timer, 0);
-        xTimerDelete(resend_timer, 0);
     }
+
+    if (cur_send_packet->payload != NULL) {
+        free(cur_send_packet->payload);
+        cur_send_packet->payload = NULL;
+    }
+
+    if (cur_send_packet != NULL) {
+        free(cur_send_packet);
+        cur_send_packet = NULL;
+    }
+    
+    xTimerStop(resend_timer, 0);
+    xTimerDelete(resend_timer, 0);
+
     free(recv_cb->data);
     free(recv_cb);
 }
@@ -238,6 +249,10 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 {
     static const char *TAG = "RECV";
     recv_packet_t *recv_cb = (recv_packet_t *)malloc(sizeof(recv_packet_t));
+    if (recv_cb == NULL) {
+        ESP_LOGE(TAG, "Malloc receive cb fail");
+        return;
+    }
 
     uint8_t * mac_addr = recv_info->src_addr;
     if (mac_addr == NULL || data == NULL || data_len <= 0) {
@@ -278,6 +293,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
         if (!found) {
             ESP_LOGI(TAG, "Filtered data with id: %04x", can_id);
             free(recv_cb->data);
+            free(recv_cb);
             return;
         }
     }
