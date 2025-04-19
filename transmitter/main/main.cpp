@@ -19,7 +19,7 @@ static void ReadDataTask(void *pvParameter){
 
     while(1) {
         for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
-            event_send_cb_t send_cb;
+            send_packet_t send_cb;
             send_cb.can_id = recv_allowed_ids[i];
             send_cb.payload = NULL;
             send_cb.payload_len = 0;

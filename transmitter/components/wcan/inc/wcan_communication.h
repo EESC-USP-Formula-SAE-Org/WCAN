@@ -29,11 +29,12 @@ typedef struct {
     uint16_t can_id;
     uint8_t *payload;
     int payload_len;
-} event_send_cb_t;
+} send_packet_t;
 extern QueueHandle_t send_queue;
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-static SemaphoreHandle_t send_mutex;
 static uint16_t ack_id = 0xF800;
+static SemaphoreHandle_t send_mutex;
+static send_packet_t *cur_send_packet;
 static size_t retry_count = 0;
 static TimerHandle_t resend_timer;
 
@@ -41,7 +42,7 @@ typedef struct {
     uint8_t mac_addr[ESP_NOW_ETH_ALEN];
     uint8_t *data;
     int data_len;
-} event_recv_cb_t;
+} recv_packet_t;
 extern QueueHandle_t recv_queue;
 static bool recv_filter = true;
 static uint16_t recv_allowed_ids[3] = {0x123, 0x456, 0x789};
