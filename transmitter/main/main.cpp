@@ -6,6 +6,7 @@
 #include "esp_err.h"
 #include "string.h"
 #include "esp_wifi.h"
+#include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -103,6 +104,7 @@ void RecvProcessingCallback(uint16_t can_id, uint8_t* payload, int payload_len)
     }
     default:
         ESP_LOGE(TAG, "Unknown data type");
+        PrintPacket(payload, payload_len);
         break;
     }
 }
@@ -135,5 +137,19 @@ extern "C" void app_main(void){
     WCAN_Init();
     ESP_LOGI(TAG, "Setup completed");
 
-    //xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
+    uint8_t mac[6];
+
+    // Read the STA MAC from efuse
+    if (esp_read_mac(mac, ESP_MAC_WIFI_STA) == ESP_OK) {
+        // if mac is this: 54:32:04:8c:0b:8c activate read task
+        uint8_t target_mac[6] = {0x54, 0x32, 0x04, 0x8c, 0x0b, 0x8c};
+        if (memcmp(mac, target_mac, sizeof(mac)) == 0) {
+            ESP_LOGI(TAG, "This is a master device");
+        } else {
+            ESP_LOGI(TAG, "This is a sensor device, starting read task");
+            xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
+        }
+    } else {
+        printf("Failed to read MAC address\n");
+    }
 }

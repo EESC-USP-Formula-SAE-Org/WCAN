@@ -11,14 +11,17 @@
             "id": "b699f152d63ca329",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "canvas",
               "state": {
-                "file": "Wireless Controller Area Network.md",
-                "mode": "source",
-                "source": false
+                "file": "Code.canvas",
+                "viewState": {
+                  "x": 1321.8262339655746,
+                  "y": 2349.536183582575,
+                  "zoom": -1.1153645464806863
+                }
               },
-              "icon": "lucide-file",
-              "title": "Wireless Controller Area Network"
+              "icon": "lucide-layout-dashboard",
+              "title": "Code"
             }
           }
         ]
@@ -170,8 +173,8 @@
   },
   "active": "b699f152d63ca329",
   "lastOpenFiles": [
-    "Code.canvas",
     "Wireless Controller Area Network.md",
+    "Code.canvas",
     "Pasted image 20250329115336.png"
   ]
 }

@@ -22,6 +22,7 @@
 
 #define ESPNOW_CHANNEL 1
 #define ESPNOW_MAXDELAY 500
+#define WCAN_RETRY_COUNT 5
 
 
 typedef struct {
@@ -31,6 +32,10 @@ typedef struct {
 } event_send_cb_t;
 extern QueueHandle_t send_queue;
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+static SemaphoreHandle_t send_mutex;
+static uint16_t ack_id = 0xF800;
+static size_t retry_count = 0;
+static TimerHandle_t resend_timer;
 
 typedef struct {
     uint8_t mac_addr[ESP_NOW_ETH_ALEN];
@@ -44,5 +49,6 @@ static uint16_t recv_allowed_ids[3] = {0x123, 0x456, 0x789};
 
 void WCAN_Init();
 void RecvProcessingCallback(uint16_t can_id, uint8_t* payload, int payload_len) __attribute__((weak));
+void PrintPacket(uint8_t *data, int data_len);
 
 #endif
