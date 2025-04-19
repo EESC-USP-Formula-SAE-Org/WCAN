@@ -43,17 +43,16 @@ static void IRAM_ATTR ResendData(TimerHandle_t xTimer) {
         SendData(*send_cb);
         retry_count++;
     } else {
-        ESP_LOGI("Resend", "Max retry attempts reached (%d)", uxSemaphoreGetCount(send_mutex));
+        ESP_LOGE("Resend", "Max retry attempts reached");
 
         BaseType_t woken = pdFALSE;
         xSemaphoreGiveFromISR(send_mutex, &woken);
         portYIELD_FROM_ISR(woken);
-        ESP_LOGI("Resend", "Mutex released");
 
         if (send_cb->payload != NULL) {
-            ESP_LOGI("Resend", "Freeing payload");
             free(send_cb->payload);
         }
+        
         xTimerStop(resend_timer, 0);
         xTimerDelete(resend_timer, 0);
     }
@@ -152,7 +151,6 @@ static void AckSend(event_recv_cb_t recv_cb)
     free(ack_data);
     ESP_LOGI(TAG, "Acknowledgment sent");
     RemovePeer(recv_cb.mac_addr);
-    ESP_LOGI(TAG, "Peer removed");
 }
 
 static void RecvProcessingTask(void *pvParameter)
@@ -168,21 +166,19 @@ static void RecvProcessingTask(void *pvParameter)
     event_recv_cb_t recv_cb;
 
     while (xQueueReceive(recv_queue, &recv_cb, portMAX_DELAY) == pdTRUE) {
-        printf("Data to be interpreted: ");
-        for (int i = 0; i < recv_cb.data_len; i++) {
-            printf("%02x ", recv_cb.data[i]);
-        }
-        printf("\n");
         
         uint16_t can_id;
         memcpy(&can_id, recv_cb.data, sizeof(uint16_t));
-        ESP_LOGI(TAG, "Received data with id: %04x", can_id);
+        ESP_LOGI(TAG, "Processing received data with id: %04x", can_id);
+        PrintPacket(recv_cb.data, recv_cb.data_len);
+
         size_t len = recv_cb.data_len - 2;
         if (len <= 0) {
             ESP_LOGE(TAG, "Received data length is invalid");
             free(recv_cb.data);
             return;
         }
+
         uint8_t *payload = (uint8_t *)malloc(len);
         if (payload == NULL) {
             ESP_LOGE(TAG, "Malloc payload fail");
@@ -233,17 +229,12 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     }
     memcpy(recv_cb->data, data, data_len);
     recv_cb->data_len = data_len;
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x send payload of size: %d", 
-            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], data_len);
-    printf("Received data: ");
-    for (int i = 0; i < recv_cb->data_len; i++) {
-        printf("%02x ", recv_cb->data[i]);
-    }
-    printf("\n");
+    ESP_LOGI(TAG, "Received payload of size %d from %02x:%02x:%02x:%02x:%02x:%02x", 
+                data_len, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+    PrintPacket(recv_cb->data, data_len);
 
     uint16_t can_id;
     memcpy(&can_id, recv_cb->data, sizeof(uint16_t));
-    ESP_LOGI(TAG, "Received data with id: %04x", can_id);
 
     if (can_id == ack_id) {
         ESP_LOGI(TAG, "Received acknowledgment");
@@ -256,6 +247,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
         return;
     }
 
+    ESP_LOGI(TAG, "Received data with id: %04x", can_id);
     if (recv_filter) {
         bool found = false;
         for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
