@@ -4,6 +4,6 @@
 #include "wcan_communication.h"
 
 void RecvProcessingTask(void *pvParameter);
-void FilterData(data_packet_t *data);
+void FilterData(data_packet_t data);
 
 #endif

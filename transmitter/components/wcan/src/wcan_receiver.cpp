@@ -15,26 +15,32 @@ void AckSend(const data_packet_t recv_packet);
 
 void RecvProcessingTask(void *pvParameter){
     static const char *TAG = "RECV";
-    recv_queue = xQueueCreate(RECV_QUEUE_SIZE, sizeof(data_packet_t*));
+    recv_queue = xQueueCreate(RECV_QUEUE_SIZE, sizeof(data_packet_t));
     if (recv_queue == NULL) {
         ESP_LOGE(TAG, "Create receive queue fail");
         return;
     }
     ESP_LOGI(TAG, "Receive processing task started");
 
-    data_packet_t *recv_data_packet = NULL;
+    data_packet_t recv_data_packet;
     while (1) {
-        if (xQueueReceive(recv_queue, recv_data_packet, portMAX_DELAY) == pdTRUE) {
-            ESP_LOGD(TAG, "Processing data with id: %04x", recv_data_packet->can_id);
-            AckSend(*recv_data_packet);
+        if (xQueueReceive(recv_queue, &recv_data_packet, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGD(TAG, "Processing data with id: %04x", recv_data_packet.can_id);
+            AckSend(recv_data_packet);
             if (RecvCallback) {
-                RecvCallback(*recv_data_packet);
+                RecvCallback(recv_data_packet);
             } else {
                 ESP_LOGW(TAG, "No callback function defined for received data");
-                FreeDataPacket(recv_data_packet);
+                if (recv_data_packet.payload != NULL) {
+                    free(recv_data_packet.payload);
+                    recv_data_packet.payload = NULL;
+                }
                 break;
             }
-            FreeDataPacket(recv_data_packet);
+            if (recv_data_packet.payload != NULL) {
+                free(recv_data_packet.payload);
+                recv_data_packet.payload = NULL;
+            }
         }
     }
     vTaskDelete(NULL);
@@ -43,7 +49,6 @@ void RecvProcessingTask(void *pvParameter){
 void AckSend(const data_packet_t recv_packet){
     static const char *TAG = "ACK";
     char *ack_mac = MacToString(recv_packet.mac_addr);
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
     ESP_LOGD(TAG, "Acknowledging that received ID: %04X from (%s)", 
                 recv_packet.can_id, ack_mac);
     free(ack_mac);
@@ -65,29 +70,35 @@ void AckSend(const data_packet_t recv_packet){
     free(ack_data.payload);
 }
 
-void FilterData(data_packet_t *data)
+void FilterData(data_packet_t data)
 {
     static const char *TAG = "FILTER";
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
-    ESP_LOGD(TAG, "Received data with id: %04x", data->can_id);
+    ESP_LOGD(TAG, "Received data with id: %04x", data.can_id);
     if (recv_filter) {
         bool found = false;
         for (int i = 0; i < recv_allowed_ids_size; i++) {
-            if (data->can_id == recv_allowed_ids[i]) {
+            if (data.can_id == recv_allowed_ids[i]) {
                 found = true;
                 break;
             }
         }
         if (!found) {
-            ESP_LOGD(TAG, "Filtered out data with id: %04x", data->can_id);
-            FreeDataPacket(data);
+            ESP_LOGD(TAG, "Filtered out data with id: %04x", data.can_id);
+
+            if (data.payload != NULL) {
+                free(data.payload);
+                data.payload = NULL;
+            }
             return;
         }
     }
 
     if (xQueueSend(recv_queue, &data, ESPNOW_MAXDELAY) != pdTRUE) {
         ESP_LOGW(TAG, "Send receive queue fail");
-        FreeDataPacket(data);
+        if (data.payload != NULL) {
+            free(data.payload);
+            data.payload = NULL;
+        }
     }
 }

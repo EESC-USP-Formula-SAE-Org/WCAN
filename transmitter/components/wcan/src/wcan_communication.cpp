@@ -69,7 +69,12 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     if (recv_data->can_id == ACK_ID) {
         AckRecv();
     }else{
-        FilterData(recv_data);
+        FilterData(*recv_data);
+    }
+    
+    if (recv_data != NULL) {
+        free(recv_data);
+        recv_data = NULL;
     }
 }
 

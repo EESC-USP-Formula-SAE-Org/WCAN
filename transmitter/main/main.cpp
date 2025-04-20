@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <nvs_flash.h>
 #include <stdbool.h>
-
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
 #include "esp_err.h"
 #include "string.h"
@@ -26,7 +26,7 @@ static void ReadDataTask(void *pvParameter){
             send_data.can_id = allowed_ids[i];
             send_data.payload = NULL;
             send_data.payload_len = 0;
-            ESP_LOGD(TAG, "Reading data for %04x", send_data.can_id);
+            ESP_LOGI(TAG, "Reading data for %04x", send_data.can_id);
 
             switch (send_data.can_id){
             case 0x123:{
@@ -74,7 +74,7 @@ static void ReadDataTask(void *pvParameter){
             if (send_data.payload == NULL) continue;
 
             if (xQueueSend(send_queue, &send_data, ESPNOW_MAXDELAY) == pdTRUE) {
-                ESP_LOGD(TAG, "Data read successfully");
+                ESP_LOGI(TAG, "Data read successfully");
             } else {
                 ESP_LOGW(TAG, "Send send queue fail");
                 free(send_data.payload);

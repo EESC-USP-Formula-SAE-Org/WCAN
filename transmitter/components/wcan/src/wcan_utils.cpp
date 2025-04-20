@@ -32,7 +32,7 @@ void RemovePeer(const uint8_t *mac_addr)
         ESP_LOGE(TAG, "Remove peer failed: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGD(TAG, "Peer removed");
+    ESP_LOGV(TAG, "Peer removed");
 }
 
 esp_now_packet_t *EncodeDataPacket(const data_packet_t *data_packet){
@@ -92,22 +92,6 @@ data_packet_t *DecodeDataPacket(const esp_now_packet_t *esp_now_packet){
     return data_packet;
 }
 
-void FreeDataPacket(data_packet_t *data_packet){
-    static const char *TAG = "DECODE";
-    if (data_packet == NULL) {
-        ESP_LOGE(TAG, "Free data packet arg error");
-        return;
-    }
-    if (data_packet->payload != NULL) {
-        free(data_packet->payload);
-        data_packet->payload = NULL;
-    }
-    if (data_packet != NULL) {
-        free(data_packet);
-        data_packet = NULL;
-    }
-}
-
 void PrintCharPacket(const uint8_t *data, const int data_len){
     // create a string buffer to hold the formatted string
     static const char *TAG = "DATA";
@@ -121,7 +105,6 @@ void PrintCharPacket(const uint8_t *data, const int data_len){
     }
     *p = '\0';
     // print the formatted string
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
     ESP_LOGD(TAG, "%s", str);
     free(str);
 }

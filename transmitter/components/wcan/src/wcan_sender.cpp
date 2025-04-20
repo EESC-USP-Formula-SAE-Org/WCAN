@@ -21,7 +21,7 @@ void ResendData(TimerHandle_t xTimer);
 void SendProcessingTask(void *pvParameter)
 {
     static const char *TAG = "SEND";
-    send_queue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(data_packet_t*));
+    send_queue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(data_packet_t));
     if (send_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create send queue");
         vTaskDelete(NULL);
@@ -36,17 +36,27 @@ void SendProcessingTask(void *pvParameter)
 
     ESP_LOGI(TAG, "Send processing task started");
 
-    data_packet_t *send_data_ptr = NULL;
+    data_packet_t send_data;
     while (1) {
-        if (xQueueReceive(send_queue, send_data_ptr, portMAX_DELAY) == pdTRUE) {
-            xSemaphoreTake(send_semaphore, portMAX_DELAY); //! CRITICAL ZONE
-            ESP_LOGD(TAG, "Processing data with id: %04x", send_data_ptr->can_id);
+        if (xQueueReceive(send_queue, &send_data, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGD(TAG, "Processing data with id: %04x", send_data.can_id);
 
-            resend_ctx.data_packet = send_data_ptr;
-            
+            resend_ctx.data_packet = (data_packet_t*)malloc(sizeof(data_packet_t));
+            if (resend_ctx.data_packet == NULL) {
+                ESP_LOGE(TAG, "Malloc for current send packet fail");
+                free(send_data.payload);
+                xSemaphoreGive(send_semaphore);
+                break;
+            }
+            memcpy(resend_ctx.data_packet, &send_data, sizeof(data_packet_t));
+
             SendData(BROADCAST_MAC, *resend_ctx.data_packet);
             
             StartResendScheduler();
+
+            xSemaphoreTake(send_semaphore, portMAX_DELAY);
+
+            StopResendScheduler();
         }
     }
     vTaskDelete(NULL);
@@ -87,19 +97,21 @@ void StopResendScheduler()
     static const char *TAG = "RESEND";
 
     ESP_LOGD(TAG, "Stopping resend timer (%d)", uxSemaphoreGetCount(send_semaphore));
-
-    FreeDataPacket(resend_ctx.data_packet);
     
     if(resend_ctx.timer != NULL) {
         xTimerStop(resend_ctx.timer, 0);
         xTimerDelete(resend_ctx.timer, 0);
         resend_ctx.timer = NULL;
-        ESP_LOGV(TAG, "Resend timer deleted");
+        ESP_LOGD(TAG, "Resend timer deleted");
     }
 
-    if(uxSemaphoreGetCount(send_semaphore) == 0) {
-        xSemaphoreGive(send_semaphore);
-        ESP_LOGV(TAG, "Send mutex released");
+    if (resend_ctx.data_packet != NULL){
+        free(resend_ctx.data_packet->payload);
+        resend_ctx.data_packet->payload = NULL;
+    }
+    if (resend_ctx.data_packet != NULL) {
+        free(resend_ctx.data_packet);
+        resend_ctx.data_packet = NULL;
     }
 }
 
@@ -114,7 +126,10 @@ void ResendData(TimerHandle_t xTimer) {
         resend_ctx.retry_count++;
     } else {
         ESP_LOGE(TAG, "Max retry attempts reached");
-        StopResendScheduler();
+        if(uxSemaphoreGetCount(send_semaphore) == 0) {
+            xSemaphoreGive(send_semaphore);
+            ESP_LOGD(TAG, "Send mutex released");
+        }
     }
 }
 
@@ -122,5 +137,8 @@ void AckRecv()
 {
     static const char *TAG = "ACK";
     ESP_LOGI(TAG, "Acknowledged data received");
-    StopResendScheduler();
+    if(uxSemaphoreGetCount(send_semaphore) == 0) {
+        xSemaphoreGive(send_semaphore);
+        ESP_LOGD(TAG, "Send mutex released");
+    }
 }
