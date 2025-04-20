@@ -47,6 +47,7 @@ void SendProcessingTask(void *pvParameter)
             if (resend_ctx.data_packet == NULL) {
                 ESP_LOGE(TAG, "Malloc for current send packet fail");
                 free(send_data_packet.payload);
+                xSemaphoreGive(send_semaphore);
                 break;
             }
             memcpy(resend_ctx.data_packet, &send_data_packet, sizeof(data_packet_t));
