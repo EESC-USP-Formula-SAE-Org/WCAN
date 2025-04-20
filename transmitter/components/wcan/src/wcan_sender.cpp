@@ -21,7 +21,7 @@ void ResendData(TimerHandle_t xTimer);
 void SendProcessingTask(void *pvParameter)
 {
     static const char *TAG = "SEND";
-    send_queue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(data_packet_t));
+    send_queue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(data_packet_t*));
     if (send_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create send queue");
         vTaskDelete(NULL);
@@ -36,20 +36,13 @@ void SendProcessingTask(void *pvParameter)
 
     ESP_LOGI(TAG, "Send processing task started");
 
-    data_packet_t send_data_packet;
+    data_packet_t *send_data_ptr = NULL;
     while (1) {
-        if (xQueueReceive(send_queue, &send_data_packet, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(send_queue, send_data_ptr, portMAX_DELAY) == pdTRUE) {
             xSemaphoreTake(send_semaphore, portMAX_DELAY); //! CRITICAL ZONE
-            ESP_LOGD(TAG, "Processing data with id: %04x", send_data_packet.can_id);
+            ESP_LOGD(TAG, "Processing data with id: %04x", send_data_ptr->can_id);
 
-            resend_ctx.data_packet = (data_packet_t*)malloc(sizeof(data_packet_t));
-            if (resend_ctx.data_packet == NULL) {
-                ESP_LOGE(TAG, "Malloc for current send packet fail");
-                free(send_data_packet.payload);
-                xSemaphoreGive(send_semaphore);
-                break;
-            }
-            memcpy(resend_ctx.data_packet, &send_data_packet, sizeof(data_packet_t));
+            resend_ctx.data_packet = send_data_ptr;
             
             SendData(BROADCAST_MAC, *resend_ctx.data_packet);
             
@@ -62,15 +55,16 @@ void SendProcessingTask(void *pvParameter)
 void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
     static const char *TAG = "SEND";
 
-    esp_now_packet_t esp_now_packet = EncodeDataPacket(data_packet);
-    memcpy(esp_now_packet.mac_addr, mac_addr, ESP_NOW_ETH_ALEN);
+    esp_now_packet_t *esp_now_packet = EncodeDataPacket(&data_packet);
+    memcpy(esp_now_packet->mac_addr, mac_addr, ESP_NOW_ETH_ALEN);
 
-    PrintCharPacket(esp_now_packet.data, esp_now_packet.data_len);
+    PrintCharPacket(esp_now_packet->data, esp_now_packet->data_len);
 
-    ESP_ERROR_CHECK(esp_now_send(esp_now_packet.mac_addr, esp_now_packet.data, esp_now_packet.data_len));
-    char *send_mac = MacToString(esp_now_packet.mac_addr);
+    ESP_ERROR_CHECK(esp_now_send(esp_now_packet->mac_addr, esp_now_packet->data, esp_now_packet->data_len));
+    char *send_mac = MacToString(esp_now_packet->mac_addr);
     ESP_LOGI(TAG, "[%04x] broadcasted", data_packet.can_id);
     free(send_mac);
+    FreeESPNOWPacket(esp_now_packet);
 }
 
 void StartResendScheduler(){

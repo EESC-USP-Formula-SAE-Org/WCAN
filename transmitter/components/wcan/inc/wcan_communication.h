@@ -18,6 +18,8 @@
 typedef struct {
     uint8_t mac_addr[ESP_NOW_ETH_ALEN];
     uint16_t can_id;
+    uint8_t attempt_number;
+    uint8_t data_count;
     uint8_t *payload;
     int payload_len;
 } data_packet_t;

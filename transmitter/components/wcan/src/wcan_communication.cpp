@@ -63,10 +63,10 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
                 data_len, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
     PrintCharPacket(recv_packet->data, data_len);
 
-    data_packet_t recv_data = DecodeDataPacket(*recv_packet);
+    data_packet_t *recv_data = DecodeDataPacket(recv_packet);
     FreeESPNOWPacket(recv_packet);
 
-    if (recv_data.can_id == ACK_ID) {
+    if (recv_data->can_id == ACK_ID) {
         AckRecv();
     }else{
         FilterData(recv_data);
