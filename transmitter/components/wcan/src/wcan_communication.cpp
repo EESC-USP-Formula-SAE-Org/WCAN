@@ -28,11 +28,9 @@ static void ESPNOW_SendCallback(const uint8_t *mac_addr, esp_now_send_status_t s
     }
 
     if (status == ESP_NOW_SEND_FAIL) {
-        ESP_LOGE(TAG, "Send to %02x:%02x:%02x:%02x:%02x:%02x failed", 
-                    mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        ESP_LOGE(TAG, "Failed");
     }else{
-        ESP_LOGI(TAG, "Send to %02x:%02x:%02x:%02x:%02x:%02x succeeded", 
-                    mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        ESP_LOGI(TAG, "Success");
     }
 }
 

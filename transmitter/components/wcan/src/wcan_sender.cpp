@@ -1,7 +1,6 @@
 #include "string.h"
 #include "esp_err.h"
 #include "esp_now.h"
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -70,7 +69,7 @@ void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
 
     ESP_ERROR_CHECK(esp_now_send(esp_now_packet.mac_addr, esp_now_packet.data, esp_now_packet.data_len));
     char *send_mac = MacToString(esp_now_packet.mac_addr);
-    ESP_LOGI(TAG, "Data sent to %s", send_mac);
+    ESP_LOGI(TAG, "[%04x] broadcasted", data_packet.can_id);
     free(send_mac);
 }
 
@@ -78,7 +77,7 @@ void StartResendScheduler(){
     static const char *TAG = "RESEND";
 
     resend_ctx.retry_count = 0;
-    resend_ctx.timer = xTimerCreate("ResendTimer", pdMS_TO_TICKS(ESPNOW_MAXDELAY), pdTRUE, NULL, ResendData);
+    resend_ctx.timer = xTimerCreate("ResendTimer", pdMS_TO_TICKS(WCAN_RETRY_DELAY), pdTRUE, NULL, ResendData);
     if (resend_ctx.timer == NULL) {
         ESP_LOGE(TAG, "Create resend timer fail");
         free(resend_ctx.data_packet->payload);
@@ -128,7 +127,6 @@ void ResendData(TimerHandle_t xTimer) {
 void AckRecv()
 {
     static const char *TAG = "ACK";
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    ESP_LOGD(TAG, "Acknowledged data received");
+    ESP_LOGI(TAG, "Acknowledged data received");
     StopResendScheduler();
 }

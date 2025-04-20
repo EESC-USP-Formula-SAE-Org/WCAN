@@ -13,12 +13,11 @@
 #include "wcan_communication.h"
 #include "wcan_utils.h"
 
-static const char *TAG = "MAIN";
-
 uint16_t allowed_ids[3] = {0x123, 0x456, 0x789};
 #define ALLOWED_IDS_SIZE (sizeof(allowed_ids) / sizeof(allowed_ids[0]))
 
 static void ReadDataTask(void *pvParameter){
+    static const char *TAG = "READ";
     ESP_LOGI(TAG, "Read data task started");
 
     while(1) {
@@ -28,6 +27,7 @@ static void ReadDataTask(void *pvParameter){
             send_data.payload = NULL;
             send_data.payload_len = 0;
             ESP_LOGD(TAG, "Reading data for %04x", send_data.can_id);
+
             switch (send_data.can_id){
             case 0x123:{
                 float f_data = 3.14f;
@@ -38,7 +38,7 @@ static void ReadDataTask(void *pvParameter){
                     break;
                 }
                 memcpy(send_data.payload, &f_data, send_data.payload_len);
-                ESP_LOGI(TAG, "Float data is: %f", f_data);
+                ESP_LOGI(TAG, "[%04x] %f", send_data.can_id, f_data);
                 break;
             }
             case 0x456:{
@@ -50,7 +50,7 @@ static void ReadDataTask(void *pvParameter){
                     break;
                 }
                 memcpy(send_data.payload, &i_data, send_data.payload_len);
-                ESP_LOGI(TAG, "Int data is: %ld", i_data);
+                ESP_LOGI(TAG, "[%04x] %ld", send_data.can_id, i_data);
                 break;
             }
             case 0x789:{
@@ -63,11 +63,11 @@ static void ReadDataTask(void *pvParameter){
                 }
                 send_data.payload[0] = send_data.payload_len-1;
                 memcpy(send_data.payload + 1, str_data, send_data.payload_len);
-                ESP_LOGI(TAG, "String data is: %s", str_data);
+                ESP_LOGI(TAG, "[%04x] %s", send_data.can_id, str_data);
                 break;
             }
             default:
-                ESP_LOGE(TAG, "Unknown data type");
+                ESP_LOGE(TAG, "[%04x] Unknown", send_data.can_id);
                 continue;
             }
 
@@ -79,7 +79,7 @@ static void ReadDataTask(void *pvParameter){
                 ESP_LOGW(TAG, "Send send queue fail");
                 free(send_data.payload);
             }
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
     }
     vTaskDelete(NULL);
@@ -88,28 +88,27 @@ static void ReadDataTask(void *pvParameter){
 void RecvCallback(data_packet_t data)
 {
     static const char *TAG = "USER-RECV";
-    ESP_LOGI(TAG, "id: %04x", data.can_id);
     switch (data.can_id)
     {
     case 0x123:{
         float float_data = *(float *)(data.payload);
-        ESP_LOGI(TAG, "Received float data: %f", float_data);
+        ESP_LOGI(TAG, "[%04x] %f", data.can_id, float_data);
         break;
     }
     case 0x456:{
         int32_t int_data = *(int32_t *)(data.payload);
-        ESP_LOGI(TAG, "Received int data: %ld", int_data);
+        ESP_LOGI(TAG, "[%04x] %ld", data.can_id, int_data);
         break;
     }
     case 0x789:{
         uint8_t str_len = *(int8_t *)(data.payload);
         char *str_data = (char *)(data.payload + 1);
         str_data[str_len] = '\0'; // Null-terminate the string
-        ESP_LOGI(TAG, "Received string data: %s", str_data);
+        ESP_LOGI(TAG, "[%04x] %s", data.can_id, str_data);
         break;
     }
     default:
-        ESP_LOGE(TAG, "Unknown data type");
+        ESP_LOGE(TAG, "[%04x] Unknown", data.can_id);
         PrintCharPacket(data.payload, data.payload_len);
         break;
     }
@@ -131,6 +130,7 @@ static void WiFiInit(void)
 }
 
 extern "C" void app_main(void){
+    static const char *TAG = "MAIN";
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
