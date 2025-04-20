@@ -41,13 +41,13 @@ void SendProcessingTask(void *pvParameter)
     while (1) {
         if (xQueueReceive(send_queue, &send_data_packet, portMAX_DELAY) == pdTRUE) {
             xSemaphoreTake(send_semaphore, portMAX_DELAY); //! CRITICAL ZONE
-            ESP_LOGI(TAG, "Processing data with id: %04x", send_data_packet.can_id);
+            ESP_LOGD(TAG, "Processing data with id: %04x", send_data_packet.can_id);
 
             resend_ctx.data_packet = (data_packet_t*)malloc(sizeof(data_packet_t));
             if (resend_ctx.data_packet == NULL) {
                 ESP_LOGE(TAG, "Malloc for current send packet fail");
                 free(send_data_packet.payload);
-                return;
+                break;
             }
             memcpy(resend_ctx.data_packet, &send_data_packet, sizeof(data_packet_t));
             
@@ -56,6 +56,7 @@ void SendProcessingTask(void *pvParameter)
             StartResendScheduler();
         }
     }
+    vTaskDelete(NULL);
 }
 
 void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
