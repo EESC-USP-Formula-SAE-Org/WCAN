@@ -78,13 +78,13 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 void WCAN_Init(bool filter, uint16_t *allowed_ids, size_t allowed_ids_size){
     static const char *TAG = "WCAN";
     ESP_ERROR_CHECK(esp_now_init());
-    ESP_LOGI(TAG, "ESP-NOW initialized");
+    ESP_LOGD(TAG, "ESP-NOW initialized");
     AddPeer(BROADCAST_MAC);
-    ESP_LOGI(TAG, "Broadcast peer added");
+    ESP_LOGD(TAG, "Broadcast peer added");
     ESP_ERROR_CHECK(esp_now_register_send_cb(ESPNOW_SendCallback));
-    ESP_LOGI(TAG, "ESP-NOW send callback registered");
+    ESP_LOGD(TAG, "ESP-NOW send callback registered");
     ESP_ERROR_CHECK(esp_now_register_recv_cb(ESPNOW_RecvCallback));
-    ESP_LOGI(TAG, "ESP-NOW receive callback registered");
+    ESP_LOGD(TAG, "ESP-NOW receive callback registered");
     
     recv_filter = filter;
     if (filter) {
@@ -97,4 +97,5 @@ void WCAN_Init(bool filter, uint16_t *allowed_ids, size_t allowed_ids_size){
 
     xTaskCreate(SendProcessingTask, "SendProcessingTask", 4096, NULL, 5, NULL);
     xTaskCreate(RecvProcessingTask, "RecvProcessingTask", 4096, NULL, 5, NULL);
+    ESP_LOGI(TAG, "WCAN initialized");
 }

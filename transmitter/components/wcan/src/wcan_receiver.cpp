@@ -21,12 +21,12 @@ void RecvProcessingTask(void *pvParameter){
         ESP_LOGE(TAG, "Create receive queue fail");
         return;
     }
-    ESP_LOGI(TAG, "Receive queue created");
+    ESP_LOGI(TAG, "Receive processing task started");
 
     data_packet_t recv_data_packet;
     while (1) {
         if (xQueueReceive(recv_queue, &recv_data_packet, portMAX_DELAY) == pdTRUE) {
-            ESP_LOGI(TAG, "Processing data with id: %04x", recv_data_packet.can_id);
+            ESP_LOGD(TAG, "Processing data with id: %04x", recv_data_packet.can_id);
             AckSend(recv_data_packet);
             if (RecvCallback) {
                 RecvCallback(recv_data_packet);
@@ -78,7 +78,7 @@ void FilterData(data_packet_t data)
             }
         }
         if (!found) {
-            ESP_LOGI(TAG, "Filtered out data with id: %04x", data.can_id);
+            ESP_LOGD(TAG, "Filtered out data with id: %04x", data.can_id);
             free(data.payload);
             return;
         }

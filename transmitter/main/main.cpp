@@ -27,7 +27,7 @@ static void ReadDataTask(void *pvParameter){
             send_data.can_id = allowed_ids[i];
             send_data.payload = NULL;
             send_data.payload_len = 0;
-            ESP_LOGI(TAG, "Reading data for %04x", send_data.can_id);
+            ESP_LOGD(TAG, "Reading data for %04x", send_data.can_id);
             switch (send_data.can_id){
             case 0x123:{
                 float f_data = 3.14f;
@@ -74,7 +74,7 @@ static void ReadDataTask(void *pvParameter){
             if (send_data.payload == NULL) continue;
 
             if (xQueueSend(send_queue, &send_data, ESPNOW_MAXDELAY) == pdTRUE) {
-                ESP_LOGI(TAG, "Data read successfully");
+                ESP_LOGD(TAG, "Data read successfully");
             } else {
                 ESP_LOGW(TAG, "Send send queue fail");
                 free(send_data.payload);
@@ -144,15 +144,15 @@ extern "C" void app_main(void){
     ESP_LOGI(TAG, "Setup completed");
 
     uint8_t mac[6];
-    if (esp_read_mac(mac, ESP_MAC_WIFI_STA) == ESP_OK) {
-        uint8_t target_mac[6] = {0x54, 0x32, 0x04, 0x8c, 0x0b, 0x8c};
-        if (memcmp(mac, target_mac, sizeof(mac)) == 0) {
-            ESP_LOGI(TAG, "This is a master device");
-        } else {
-            ESP_LOGI(TAG, "This is a sensor device, starting read task");
-            xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
-        }
+    ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
+    char *mac_str = MacToString(mac);
+    ESP_LOGI(TAG, "MAC address: %s", mac_str);
+    free(mac_str);
+    uint8_t target_mac[6] = {0x54, 0x32, 0x04, 0x8c, 0x0b, 0x8c};
+    if (memcmp(mac, target_mac, sizeof(mac)) == 0) {
+        ESP_LOGI(TAG, "This is a master device");
     } else {
-        printf("Failed to read MAC address\n");
+        ESP_LOGI(TAG, "This is a sensor device, starting read task");
+        xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
     }
 }
