@@ -13,15 +13,15 @@
             "state": {
               "type": "canvas",
               "state": {
-                "file": "Code.canvas",
+                "file": "Flow.canvas",
                 "viewState": {
-                  "x": 4234.877632974533,
-                  "y": 4241.371420253769,
-                  "zoom": -1.6666666666666665
+                  "x": 0,
+                  "y": 0,
+                  "zoom": -2.1761248177772425
                 }
               },
               "icon": "lucide-layout-dashboard",
-              "title": "Code"
+              "title": "Flow"
             }
           }
         ]
@@ -173,8 +173,9 @@
   },
   "active": "b699f152d63ca329",
   "lastOpenFiles": [
-    "Wireless Controller Area Network.md",
     "Code.canvas",
+    "Flow.canvas",
+    "Wireless Controller Area Network.md",
     "Pasted image 20250329115336.png"
   ]
 }

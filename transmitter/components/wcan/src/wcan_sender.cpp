@@ -1,6 +1,7 @@
 #include "string.h"
 #include "esp_err.h"
 #include "esp_now.h"
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -40,9 +41,7 @@ void SendProcessingTask(void *pvParameter)
     while (1) {
         if (xQueueReceive(send_queue, &send_data_packet, portMAX_DELAY) == pdTRUE) {
             xSemaphoreTake(send_semaphore, portMAX_DELAY); //! CRITICAL ZONE
-            ESP_LOGI(TAG, "Send mutex taken");
-
-            ESP_LOGI(TAG, "Processing send data with id: %04x", send_data_packet.can_id);
+            ESP_LOGI(TAG, "Processing data with id: %04x", send_data_packet.can_id);
 
             resend_ctx.data_packet = (data_packet_t*)malloc(sizeof(data_packet_t));
             if (resend_ctx.data_packet == NULL) {
@@ -65,12 +64,12 @@ void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
     esp_now_packet_t esp_now_packet = EncodeDataPacket(data_packet);
     memcpy(esp_now_packet.mac_addr, mac_addr, ESP_NOW_ETH_ALEN);
 
-    char *send_mac = MacToString(esp_now_packet.mac_addr);
-    ESP_LOGI(TAG, "Sending to %s", send_mac);
-    free(send_mac);
     PrintCharPacket(esp_now_packet.data, esp_now_packet.data_len);
 
     ESP_ERROR_CHECK(esp_now_send(esp_now_packet.mac_addr, esp_now_packet.data, esp_now_packet.data_len));
+    char *send_mac = MacToString(esp_now_packet.mac_addr);
+    ESP_LOGI(TAG, "Data sent to %s", send_mac);
+    free(send_mac);
 }
 
 void StartResendScheduler(){
@@ -85,14 +84,14 @@ void StartResendScheduler(){
     }
 
     xTimerStart(resend_ctx.timer, 0);
-    ESP_LOGI(TAG, "Resend timer started");
+    ESP_LOGD(TAG, "Resend timer started");
 }
 
 void StopResendScheduler()
 {
     static const char *TAG = "RESEND";
 
-    ESP_LOGI(TAG, "Stopping resend timer (%d)", uxSemaphoreGetCount(send_semaphore));
+    ESP_LOGD(TAG, "Stopping resend timer (%d)", uxSemaphoreGetCount(send_semaphore));
 
     FreeDataPacket(resend_ctx.data_packet);
     
@@ -100,12 +99,12 @@ void StopResendScheduler()
         xTimerStop(resend_ctx.timer, 0);
         xTimerDelete(resend_ctx.timer, 0);
         resend_ctx.timer = NULL;
-        ESP_LOGI(TAG, "Resend timer deleted");
+        ESP_LOGV(TAG, "Resend timer deleted");
     }
 
     if(uxSemaphoreGetCount(send_semaphore) == 0) {
         xSemaphoreGive(send_semaphore);
-        ESP_LOGI(TAG, "Send mutex released");
+        ESP_LOGV(TAG, "Send mutex released");
     }
 }
 
@@ -113,7 +112,7 @@ void ResendData(TimerHandle_t xTimer) {
     static const char *TAG = "RESEND";
 
     if (resend_ctx.retry_count < WCAN_MAX_RETRY_COUNT) {
-        ESP_LOGI(TAG, "Timeout reached, resending %04x... Attempt: %d of %d", 
+        ESP_LOGW(TAG, "Timeout reached, resending %04x... Attempt: %d of %d", 
                     resend_ctx.data_packet->can_id, resend_ctx.retry_count + 1, WCAN_MAX_RETRY_COUNT);
 
         SendData(BROADCAST_MAC, *resend_ctx.data_packet);
@@ -126,7 +125,8 @@ void ResendData(TimerHandle_t xTimer) {
 
 void AckRecv()
 {
+    static const char *TAG = "ACK";
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    ESP_LOGD(TAG, "Acknowledged data received");
     StopResendScheduler();
-
-    vTaskDelete(NULL);
 }

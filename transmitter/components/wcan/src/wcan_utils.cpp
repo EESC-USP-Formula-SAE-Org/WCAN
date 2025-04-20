@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
 
 #include "wcan_utils.h"
@@ -100,7 +101,8 @@ void PrintCharPacket(const uint8_t *data, const int data_len){
     }
     *p = '\0';
     // print the formatted string
-    ESP_LOGI(TAG, "%s", str);
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    ESP_LOGD(TAG, "%s", str);
 }
 
 char *MacToString(const uint8_t *mac_addr)

@@ -70,10 +70,9 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 
     if (recv_data.can_id == ACK_ID) {
         AckRecv();
-        return;
+    }else{
+        FilterData(recv_data);
     }
-
-    FilterData(recv_data);
 }
 
 void WCAN_Init(bool filter, uint16_t *allowed_ids, size_t allowed_ids_size){
@@ -96,6 +95,6 @@ void WCAN_Init(bool filter, uint16_t *allowed_ids, size_t allowed_ids_size){
         recv_allowed_ids_size = 0;
     }
 
-    xTaskCreate(SendProcessingTask, "SendProcessingTask", 4096, NULL, 4, NULL);
-    xTaskCreate(RecvProcessingTask, "RecvProcessingTask", 4096, NULL, 3, NULL);
+    xTaskCreate(SendProcessingTask, "SendProcessingTask", 4096, NULL, 5, NULL);
+    xTaskCreate(RecvProcessingTask, "RecvProcessingTask", 4096, NULL, 5, NULL);
 }

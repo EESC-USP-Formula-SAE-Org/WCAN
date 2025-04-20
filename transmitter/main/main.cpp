@@ -79,7 +79,7 @@ static void ReadDataTask(void *pvParameter){
                 ESP_LOGW(TAG, "Send send queue fail");
                 free(send_data.payload);
             }
-            vTaskDelay(pdMS_TO_TICKS(2000));
+            vTaskDelay(pdMS_TO_TICKS(5000));
         }
     }
     vTaskDelete(NULL);
@@ -87,6 +87,8 @@ static void ReadDataTask(void *pvParameter){
 
 void RecvCallback(data_packet_t data)
 {
+    static const char *TAG = "USER-RECV";
+    ESP_LOGI(TAG, "id: %04x", data.can_id);
     switch (data.can_id)
     {
     case 0x123:{
