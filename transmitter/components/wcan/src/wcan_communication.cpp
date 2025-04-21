@@ -30,7 +30,7 @@ static void ESPNOW_SendCallback(const uint8_t *mac_addr, esp_now_send_status_t s
     if (status == ESP_NOW_SEND_FAIL) {
         ESP_LOGE(TAG, "Failed");
     }else{
-        ESP_LOGD(TAG, "Success");
+        ESP_LOGI(TAG, "Success");
     }
 }
 
@@ -61,7 +61,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     memcpy(recv_packet->data, data, data_len);
     recv_packet->data_len = data_len;
 
-    ESP_LOGD(TAG, "Received payload of size %d from %02x:%02x:%02x:%02x:%02x:%02x", 
+    ESP_LOGI(TAG, "Received payload of size %d from %02x:%02x:%02x:%02x:%02x:%02x", 
                 data_len, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
     PrintCharPacket(recv_packet->data, data_len);
 

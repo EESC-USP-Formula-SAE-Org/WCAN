@@ -39,7 +39,6 @@ void SendProcessingTask(void *pvParameter)
 
     data_packet_t send_data;
     while (1) {
-        //ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
         if (xQueueReceive(send_queue, &send_data, portMAX_DELAY) == pdTRUE) {
             ESP_LOGV(TAG, "Processing data with id: %04x", send_data.can_id);
 
@@ -61,8 +60,6 @@ void SendProcessingTask(void *pvParameter)
 
             StopResendScheduler();
         }
-        //ESP_ERROR_CHECK(heap_trace_stop());
-        //heap_trace_dump();
     }
     vTaskDelete(NULL);
 }
@@ -76,7 +73,7 @@ void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
     PrintCharPacket(esp_now_packet->data, esp_now_packet->data_len);
 
     ESP_ERROR_CHECK(esp_now_send(esp_now_packet->mac_addr, esp_now_packet->data, esp_now_packet->data_len));
-    ESP_LOGD(TAG, "[%04x] broadcasted", data_packet.can_id);
+    ESP_LOGI(TAG, "[%04x] broadcasted", data_packet.can_id);
     //free packet
     if (esp_now_packet->data != NULL) {
         free(esp_now_packet->data);
@@ -152,7 +149,7 @@ void ResendData(TimerHandle_t xTimer) {
 void AckRecv()
 {
     static const char *TAG = "ACK";
-    ESP_LOGD(TAG, "Acknowledged data received");
+    ESP_LOGI(TAG, "Acknowledged data received");
     if(uxSemaphoreGetCount(send_semaphore) == 0) {
         xSemaphoreGive(send_semaphore);
         ESP_LOGV(TAG, "Send mutex released");

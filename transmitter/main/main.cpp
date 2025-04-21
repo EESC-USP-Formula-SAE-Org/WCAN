@@ -16,21 +16,12 @@
 uint16_t allowed_ids[3] = {0x123, 0x456, 0x789};
 #define ALLOWED_IDS_SIZE (sizeof(allowed_ids) / sizeof(allowed_ids[0]))
 
-#include "esp_heap_trace.h"
-#define NUM_RECORDS 100
-static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
-
-void print_free_heap_size() {
-    ESP_LOGI("HEAP", "Free heap size: %lu bytes", esp_get_free_heap_size());
-}
-
 static void ReadDataTask(void *pvParameter){
     static const char *TAG = "READ";
     ESP_LOGI(TAG, "Read data task started");
 
     while(1) {
         for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
-            print_free_heap_size();
             data_packet_t send_data;
             send_data.can_id = allowed_ids[i];
             send_data.payload = NULL;
@@ -122,7 +113,6 @@ void RecvCallback(data_packet_t data)
         PrintCharPacket(data.payload, data.payload_len);
         break;
     }
-    print_free_heap_size();
 }
 
 static void WiFiInit(void)
@@ -142,7 +132,6 @@ static void WiFiInit(void)
 
 extern "C" void app_main(void){
     static const char *TAG = "MAIN";
-    ESP_ERROR_CHECK( heap_trace_init_standalone(trace_record, NUM_RECORDS) );
     
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -158,7 +147,7 @@ extern "C" void app_main(void){
 
     uint8_t mac[6];
     ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
-    ESP_LOGD(TAG, "MAC address: %02x:%02x:%02x:%02x:%02x:%02x", 
+    ESP_LOGI(TAG, "MAC address: %02x:%02x:%02x:%02x:%02x:%02x", 
                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     uint8_t target_mac[6] = {0x54, 0x32, 0x04, 0x8c, 0x0b, 0x8c};
     if (memcmp(mac, target_mac, sizeof(mac)) == 0) {
