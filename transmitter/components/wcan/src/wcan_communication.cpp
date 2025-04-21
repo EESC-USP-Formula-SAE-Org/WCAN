@@ -66,7 +66,10 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     PrintCharPacket(recv_packet->data, data_len);
 
     data_packet_t *recv_data = DecodeDataPacket(recv_packet);
-    FreeESPNOWPacket(recv_packet);
+
+    free(recv_packet->data);
+    free(recv_packet);
+    recv_packet = NULL;
 
     if (recv_data->can_id == ACK_ID) {
         AckRecv();
