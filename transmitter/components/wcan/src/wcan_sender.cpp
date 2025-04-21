@@ -2,6 +2,7 @@
 #include "esp_err.h"
 #include "esp_now.h"
 #include "esp_log.h"
+#include "esp_heap_trace.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -38,10 +39,12 @@ void SendProcessingTask(void *pvParameter)
 
     data_packet_t send_data;
     while (1) {
+        //ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
         if (xQueueReceive(send_queue, &send_data, portMAX_DELAY) == pdTRUE) {
-            ESP_LOGD(TAG, "Processing data with id: %04x", send_data.can_id);
+            ESP_LOGV(TAG, "Processing data with id: %04x", send_data.can_id);
 
             resend_ctx.data_packet = (data_packet_t*)malloc(sizeof(data_packet_t));
+            ESP_LOGV(TAG, "resend_ctx.data_packet: %p\n", (void*)resend_ctx.data_packet);
             if (resend_ctx.data_packet == NULL) {
                 ESP_LOGE(TAG, "Malloc for current send packet fail");
                 free(send_data.payload);
@@ -58,6 +61,8 @@ void SendProcessingTask(void *pvParameter)
 
             StopResendScheduler();
         }
+        //ESP_ERROR_CHECK(heap_trace_stop());
+        //heap_trace_dump();
     }
     vTaskDelete(NULL);
 }
@@ -71,10 +76,16 @@ void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
     PrintCharPacket(esp_now_packet->data, esp_now_packet->data_len);
 
     ESP_ERROR_CHECK(esp_now_send(esp_now_packet->mac_addr, esp_now_packet->data, esp_now_packet->data_len));
-    char *send_mac = MacToString(esp_now_packet->mac_addr);
-    ESP_LOGI(TAG, "[%04x] broadcasted", data_packet.can_id);
-    free(send_mac);
-    FreeESPNOWPacket(esp_now_packet);
+    ESP_LOGD(TAG, "[%04x] broadcasted", data_packet.can_id);
+    //free packet
+    if (esp_now_packet->data != NULL) {
+        free(esp_now_packet->data);
+        esp_now_packet->data = NULL;
+    }
+    if (esp_now_packet != NULL) {
+        free(esp_now_packet);
+        esp_now_packet = NULL;
+    }
 }
 
 void StartResendScheduler(){
@@ -84,28 +95,33 @@ void StartResendScheduler(){
     resend_ctx.timer = xTimerCreate("ResendTimer", pdMS_TO_TICKS(WCAN_RETRY_DELAY), pdTRUE, NULL, ResendData);
     if (resend_ctx.timer == NULL) {
         ESP_LOGE(TAG, "Create resend timer fail");
-        free(resend_ctx.data_packet->payload);
+        if (resend_ctx.data_packet->payload != NULL) {
+            free(resend_ctx.data_packet->payload);
+            free(resend_ctx.data_packet);
+            resend_ctx.data_packet->payload = NULL;
+            resend_ctx.data_packet = NULL;
+        }
         return;
     }
 
     xTimerStart(resend_ctx.timer, 0);
-    ESP_LOGD(TAG, "Resend timer started");
+    ESP_LOGV(TAG, "Resend timer started");
 }
 
 void StopResendScheduler()
 {
     static const char *TAG = "RESEND";
 
-    ESP_LOGD(TAG, "Stopping resend timer (%d)", uxSemaphoreGetCount(send_semaphore));
+    ESP_LOGV(TAG, "Stopping resend timer (%d)", uxSemaphoreGetCount(send_semaphore));
     
     if(resend_ctx.timer != NULL) {
         xTimerStop(resend_ctx.timer, 0);
         xTimerDelete(resend_ctx.timer, 0);
         resend_ctx.timer = NULL;
-        ESP_LOGD(TAG, "Resend timer deleted");
+        ESP_LOGV(TAG, "Resend timer deleted");
     }
 
-    if (resend_ctx.data_packet != NULL){
+    if (resend_ctx.data_packet->payload != NULL){
         free(resend_ctx.data_packet->payload);
         resend_ctx.data_packet->payload = NULL;
     }
@@ -128,7 +144,7 @@ void ResendData(TimerHandle_t xTimer) {
         ESP_LOGE(TAG, "Max retry attempts reached");
         if(uxSemaphoreGetCount(send_semaphore) == 0) {
             xSemaphoreGive(send_semaphore);
-            ESP_LOGD(TAG, "Send mutex released");
+            ESP_LOGV(TAG, "Send mutex released");
         }
     }
 }
@@ -136,9 +152,9 @@ void ResendData(TimerHandle_t xTimer) {
 void AckRecv()
 {
     static const char *TAG = "ACK";
-    ESP_LOGI(TAG, "Acknowledged data received");
+    ESP_LOGD(TAG, "Acknowledged data received");
     if(uxSemaphoreGetCount(send_semaphore) == 0) {
         xSemaphoreGive(send_semaphore);
-        ESP_LOGD(TAG, "Send mutex released");
+        ESP_LOGV(TAG, "Send mutex released");
     }
 }

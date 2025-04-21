@@ -30,7 +30,7 @@ static void ESPNOW_SendCallback(const uint8_t *mac_addr, esp_now_send_status_t s
     if (status == ESP_NOW_SEND_FAIL) {
         ESP_LOGE(TAG, "Failed");
     }else{
-        ESP_LOGI(TAG, "Success");
+        ESP_LOGD(TAG, "Success");
     }
 }
 
@@ -38,6 +38,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 {
     static const char *TAG = "RECV";
     esp_now_packet_t *recv_packet = (esp_now_packet_t *)malloc(sizeof(esp_now_packet_t));
+    ESP_LOGV(TAG, "recv_packet: %p\n", (void*)recv_packet);
     if (recv_packet == NULL) {
         ESP_LOGE(TAG, "Malloc receive cb fail");
         return;
@@ -51,6 +52,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     memcpy(recv_packet->mac_addr, mac_addr, ESP_NOW_ETH_ALEN);
 
     recv_packet->data = (uint8_t*)malloc(data_len);
+    ESP_LOGV(TAG, "recv_packet->data: %p\n", (void*)recv_packet->data);
     if (recv_packet->data == NULL) {
         ESP_LOGE(TAG, "Malloc receive data fail");
         free(recv_packet);
@@ -59,7 +61,7 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
     memcpy(recv_packet->data, data, data_len);
     recv_packet->data_len = data_len;
 
-    ESP_LOGI(TAG, "Received payload of size %d from %02x:%02x:%02x:%02x:%02x:%02x", 
+    ESP_LOGD(TAG, "Received payload of size %d from %02x:%02x:%02x:%02x:%02x:%02x", 
                 data_len, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
     PrintCharPacket(recv_packet->data, data_len);
 
@@ -68,6 +70,10 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 
     if (recv_data->can_id == ACK_ID) {
         AckRecv();
+        if(recv_data->payload != NULL) {
+            free(recv_data->payload);
+            recv_data->payload = NULL;
+        }
     }else{
         FilterData(*recv_data);
     }
@@ -81,13 +87,13 @@ static void ESPNOW_RecvCallback(const esp_now_recv_info_t *recv_info, const uint
 void WCAN_Init(bool filter, uint16_t *allowed_ids, size_t allowed_ids_size){
     static const char *TAG = "WCAN";
     ESP_ERROR_CHECK(esp_now_init());
-    ESP_LOGD(TAG, "ESP-NOW initialized");
+    ESP_LOGV(TAG, "ESP-NOW initialized");
     AddPeer(BROADCAST_MAC);
-    ESP_LOGD(TAG, "Broadcast peer added");
+    ESP_LOGV(TAG, "Broadcast peer added");
     ESP_ERROR_CHECK(esp_now_register_send_cb(ESPNOW_SendCallback));
-    ESP_LOGD(TAG, "ESP-NOW send callback registered");
+    ESP_LOGV(TAG, "ESP-NOW send callback registered");
     ESP_ERROR_CHECK(esp_now_register_recv_cb(ESPNOW_RecvCallback));
-    ESP_LOGD(TAG, "ESP-NOW receive callback registered");
+    ESP_LOGV(TAG, "ESP-NOW receive callback registered");
     
     recv_filter = filter;
     if (filter) {
