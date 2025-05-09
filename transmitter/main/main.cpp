@@ -10,78 +10,46 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 
+#include "driver/twai.h"
+
 #include "wcan_communication.h"
 #include "wcan_utils.h"
 
 uint16_t allowed_ids[3] = {0x123, 0x456, 0x789};
 #define ALLOWED_IDS_SIZE (sizeof(allowed_ids) / sizeof(allowed_ids[0]))
 
+#define MAX_UINT32 0xFFFFFFFF
+
 static void ReadDataTask(void *pvParameter){
     static const char *TAG = "READ";
     ESP_LOGI(TAG, "Read data task started");
+    uint32_t val = 0;
 
     while(1) {
-        for (int i = 0; i < ALLOWED_IDS_SIZE; i++) {
-            data_packet_t send_data;
-            send_data.can_id = allowed_ids[i];
-            send_data.payload = NULL;
-            send_data.payload_len = 0;
-            ESP_LOGD(TAG, "Reading data for %04x", send_data.can_id);
+        data_packet_t send_data;
+        send_data.can_id = 0x123;
+        send_data.payload = NULL;
+        send_data.payload_len = 0;
 
-            switch (send_data.can_id){
-            case 0x123:{
-                float f_data = 3.14f;
-                send_data.payload_len = sizeof(f_data);
-                send_data.payload = (uint8_t *)malloc(send_data.payload_len);
-                if (send_data.payload == NULL) {
-                    ESP_LOGE(TAG, "Malloc payload fail");
-                    break;
-                }
-                memcpy(send_data.payload, &f_data, send_data.payload_len);
-                ESP_LOGD(TAG, "[%04x] %f", send_data.can_id, f_data);
-                break;
-            }
-            case 0x456:{
-                int32_t i_data = 42;
-                send_data.payload_len = sizeof(i_data);
-                send_data.payload = (uint8_t *)malloc(send_data.payload_len);
-                if (send_data.payload == NULL) {
-                    ESP_LOGE(TAG, "Malloc payload fail");
-                    break;
-                }
-                memcpy(send_data.payload, &i_data, send_data.payload_len);
-                ESP_LOGD(TAG, "[%04x] %ld", send_data.can_id, i_data);
-                break;
-            }
-            case 0x789:{
-                char str_data[] = "Hello";
-                send_data.payload_len = strlen(str_data) + 1;
-                send_data.payload = (uint8_t *)malloc(send_data.payload_len);
-                if (send_data.payload == NULL) {
-                    ESP_LOGE(TAG, "Malloc payload fail");
-                    break;
-                }
-                send_data.payload[0] = send_data.payload_len-1;
-                memcpy(send_data.payload + 1, str_data, send_data.payload_len);
-                ESP_LOGD(TAG, "[%04x] %s", send_data.can_id, str_data);
-                break;
-            }
-            default:
-                ESP_LOGE(TAG, "[%04x] Unknown", send_data.can_id);
-                continue;
-            }
-
-            if (send_data.payload == NULL) continue;
-
-            ESP_LOGV(TAG, "send_data.payload: %p\n", (void*)send_data.payload);
-            if (xQueueSend(send_queue, &send_data, ESPNOW_MAXDELAY) == pdTRUE) {
-                ESP_LOGD(TAG, "Data read successfully");
-            } else {
-                ESP_LOGW(TAG, "Send send queue fail");
-                free(send_data.payload);
-            }
-            vTaskDelay(pdMS_TO_TICKS(100));
+        send_data.payload_len = sizeof(val);
+        send_data.payload = (uint8_t *)malloc(send_data.payload_len);
+        if (send_data.payload == NULL) {
+            ESP_LOGE(TAG, "Malloc payload fail");
+            break;
         }
+        memcpy(send_data.payload, &val, send_data.payload_len);
+        ESP_LOGI(TAG, "[%04x] %lu", send_data.can_id, val);
+
+        ESP_LOGV(TAG, "send_data.payload: %p\n", (void*)send_data.payload);
+        if (xQueueSend(send_queue, &send_data, ESPNOW_MAXDELAY) == pdTRUE) {
+            ESP_LOGD(TAG, "Data read successfully");
+        } else {
+            ESP_LOGW(TAG, "Send send queue fail");
+            free(send_data.payload);
+        }
+
+        val = (val + 1) % MAX_UINT32;
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     vTaskDelete(NULL);
 }
@@ -91,27 +59,30 @@ void RecvCallback(data_packet_t data)
     static const char *TAG = "USER-RECV";
     switch (data.can_id)
     {
-    case 0x123:{
-        float float_data = *(float *)(data.payload);
-        ESP_LOGD(TAG, "[%04x] %f", data.can_id, float_data);
-        break;
-    }
-    case 0x456:{
-        int32_t int_data = *(int32_t *)(data.payload);
-        ESP_LOGD(TAG, "[%04x] %ld", data.can_id, int_data);
-        break;
-    }
-    case 0x789:{
-        uint8_t str_len = *(int8_t *)(data.payload);
-        char *str_data = (char *)(data.payload + 1);
-        str_data[str_len] = '\0'; // Null-terminate the string
-        ESP_LOGD(TAG, "[%04x] %s", data.can_id, str_data);
-        break;
-    }
-    default:
-        ESP_LOGE(TAG, "[%04x] Unknown", data.can_id);
-        PrintCharPacket(data.payload, data.payload_len);
-        break;
+        case 0x123:{
+            uint32_t uint_data = *(uint32_t *)(data.payload);
+            ESP_LOGI(TAG, "[%04x] %lu", data.can_id, uint_data);
+            // Configure message to transmit
+            twai_message_t message = {
+                .flags = 0,
+                // Message ID and payload
+                .identifier = 0xAAAA,
+                .data_length_code = data.payload_len,
+                .data = *data.payload,
+            };
+
+            // Queue message for transmission
+            if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+                ESP_LOGI(TAG, "Message queued for transmission\n");
+            } else {
+                ESP_LOGE(TAG, "Failed to queue message for transmission\n");
+            }
+            break;
+        }
+        default:
+            ESP_LOGE(TAG, "[%04x] Unknown", data.can_id);
+            PrintCharPacket(data.payload, data.payload_len);
+            break;
     }
 }
 
@@ -130,6 +101,29 @@ static void WiFiInit(void)
     ESP_ERROR_CHECK(esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 }
 
+static void CanInit(){
+    static const char *TAG = "CAN";
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_21, GPIO_NUM_22, TWAI_MODE_NORMAL);
+    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+    // Install TWAI driver
+    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
+        ESP_LOGI(TAG, "Driver installed\n");
+    } else {
+        ESP_LOGE(TAG, "Failed to install driver\n");
+        return;
+    }
+
+    // Start TWAI driver
+    if (twai_start() == ESP_OK) {
+        ESP_LOGI(TAG, "Driver started\n");
+    } else {
+        ESP_LOGE(TAG, "Failed to start driver\n");
+        return;
+    }
+}
+
 extern "C" void app_main(void){
     static const char *TAG = "MAIN";
     
@@ -142,6 +136,8 @@ extern "C" void app_main(void){
 
     WiFiInit();
     ESP_LOGI(TAG, "WiFi initialized");
+    CanInit();
+    ESP_LOGI(TAG, "CAN initialized");
     WCAN_Init(true, allowed_ids, ALLOWED_IDS_SIZE);
     ESP_LOGI(TAG, "Setup completed");
 
@@ -149,11 +145,6 @@ extern "C" void app_main(void){
     ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
     ESP_LOGI(TAG, "MAC address: %02x:%02x:%02x:%02x:%02x:%02x", 
                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    uint8_t target_mac[6] = {0x54, 0x32, 0x04, 0x8c, 0x0b, 0x8c};
-    if (memcmp(mac, target_mac, sizeof(mac)) == 0) {
-        ESP_LOGI(TAG, "This is a master device");
-    } else {
-        ESP_LOGI(TAG, "This is a sensor device, starting read task");
-        xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
-    }
+
+    //xTaskCreate(ReadDataTask, "ReadDataTask", 4096, NULL, 5, NULL);
 }

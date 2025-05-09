@@ -21,7 +21,7 @@ typedef struct {
     uint8_t attempt_number;
     uint8_t data_count;
     uint8_t *payload;
-    int payload_len;
+    uint8_t payload_len;
 } data_packet_t;
 
 typedef struct {

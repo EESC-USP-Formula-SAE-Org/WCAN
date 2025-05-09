@@ -73,7 +73,7 @@ void SendData(const uint8_t* mac_addr, const data_packet_t data_packet){
     PrintCharPacket(esp_now_packet->data, esp_now_packet->data_len);
 
     ESP_ERROR_CHECK(esp_now_send(esp_now_packet->mac_addr, esp_now_packet->data, esp_now_packet->data_len));
-    ESP_LOGI(TAG, "[%04x] broadcasted", data_packet.can_id);
+    ESP_LOGD(TAG, "[%04x] broadcasted", data_packet.can_id);
     //free packet
     if (esp_now_packet->data != NULL) {
         free(esp_now_packet->data);
