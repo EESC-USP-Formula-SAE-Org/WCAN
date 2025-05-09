@@ -1,7 +1,7 @@
 # WCAN – Wireless CAN Bridge for Formula Student
 
 ## Goal
-Create a **drop‑in, wire‑less extension of the car’s CAN bus** so that sensors mounted in hard‑to‑reach places can be read without changing the existing electrical architecture. Each sensor node transmits its data over **ESPNOW** (WiFi) to a single receiver node; the receiver injects the data on the wired CAN bus as if it had come from any other wired sensor.
+Create a **drop‑in, wire‑less extension of the car’s CAN bus** so that sensors mounted in hard‑to‑reach places can be read without changing the existing electrical architecture. Each sensor node transmits its data over **ESPNOW** (WiFi) to *N* receiver nodes; the receiver injects the data on the wired CAN bus as if it had come from any other wired sensor.
 
 ## Requirements
 ### Hardware
@@ -24,7 +24,7 @@ Create a **drop‑in, wire‑less extension of the car’s CAN bus** so that sen
  │  Sensor ESP  │  ───────────────►    │ Receiver ESP │  ───────►  Car ECU
  └──────────────┘   (broadcast)        └──────────────┘
 ```
-1. **Frame build** – Each sensor packs its value into an 11‑bit *CAN ID* + up to 8‑byte *payload* and appends a running *sequence number*.
+1. **Frame build** – Each sensor packs its value into an 11‑bit *CAN ID* + up to 8‑byte *payload*.
 2. **Broadcast & wait** – The frame is broadcast over ESPNOW; the node then waits for an **ACK**.
 3. **Retransmit logic** – If the ACK is not seen, the node retransmits up to *MAX_RETRY* times. After that the message is counted as **lost**.
 4. **Receive & forward** – The receiver filters incoming ESPNOW frames (by CAN ID mask), sends the ACK back, converts the frame to a native CAN packet and transmits it with the same ID/payload on the wired bus.
@@ -64,4 +64,4 @@ Create a **drop‑in, wire‑less extension of the car’s CAN bus** so that sen
 MIT – see [LICENSE](LICENSE) for details.
 
 ## Authors
-* [Matheus Cirillo](
+* [Matheus Cirillo](https://github.com/cirillom)
